@@ -18,18 +18,15 @@ DONATE_QR_ID =  os.getenv("DONATE_QR_FILE_ID")
 
 def get_main_keyboard():
     keyboard = [
-        [KeyboardButton("🚀 បង្កើត QR code ថ្មី"), KeyboardButton("🎨 QR ដាក់ Logo")],
+        [KeyboardButton("🚀 បង្កើត QR ធម្មតា"), KeyboardButton("🎨 QR ដាក់ Logo")],
+        [KeyboardButton("📶 QR សម្រាប់ Wi-Fi"), KeyboardButton("📧 QR សម្រាប់ Email")],
         [KeyboardButton("☕️ ឧបត្ថម្ភ (Donate)"), KeyboardButton("❓ ជំនួយ")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    
 
-async def start (update : Update ,context : ContextTypes.DEFAULT_TYPE):
-    welcome_text = (
-        "សួស្តី! 👋 ខ្ញុំគឺជា QR Code Bot។\n"
-        "សូមផ្ញើអត្ថបទ ឬតំណភ្ជាប់ (URL) ណាមួយមកកាន់ខ្ញុំ នោះខ្ញុំនឹងបម្លែងវាជា QR Code ជូនអ្នកភ្លាមៗ! 🚀"
-    )
-    await update.message.reply_text(welcome_text)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    welcome_text = "សួស្តី! 👋 ខ្ញុំគឺជា QR Code Bot។\nសូមជ្រើសរើសមុខងារណាមួយខាងក្រោម៖"
+    await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard())
 
 
 
@@ -54,86 +51,111 @@ async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Error sending donate QR: {e}")
         await update.message.reply_text("មិនអាចផ្ញើ QR Code បានទេ សូមព្យាយាមម្តងទៀត។")
 
-async def help_command(update :Update,context :ContextTypes.DEFAULT_TYPE):
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "នេះជាវិធីប្រើប្រាស់ QR Code Bot:\n\n"
-        "1. **បង្កើត QR Code ថ្មី:**\n"
-        "   - ចុចប៊ូតុង '🚀 បង្កើត QR code ថ្មី' ឬផ្ញើអត្ថបទ/តំណភ្ជាប់ (URL) មកកាន់ខ្ញុំ។\n"
-        "   - ខ្ញុំនឹងបង្កើត QR Code ជូនអ្នកភ្លាមៗ។\n\n"
-        "2. **ឧបត្ថម្ភ (Donate):**\n"
-        "   - ចុចប៊ូតុង '☕️ ឧបត្ថម្ភ (Donate)' ដើម្បីផ្ញើការគាំទ្រដល់ការអភិវឌ្ឍ Bot របស់យើង។\n\n"
-        "3. **ជំនួយ:**\n"
-        "   - ចុចប៊ូតុង '❓ ជំនួយ' ដើម្បីមើលពាក្យបញ្ជាដែលមាន។"
+        "1. **បង្កើត QR Code ធម្មតា:**\n"
+        "   - ចុចប៊ូតុង '🚀 បង្កើត QR ធម្មតា' ឬផ្ញើអត្ថបទ/តំណភ្ជាប់ (URL) មកកាន់ខ្ញុំ។\n\n"
+        "2. **Wi-Fi និង Email:**\n"
+        "   - ជ្រើសរើសប៊ូតុង '📶 QR សម្រាប់ Wi-Fi' ឬ '📧 QR សម្រាប់ Email' ហើយធ្វើតាមការណែនាំ។\n\n"
+        "3. **ឧបត្ថម្ភ (Donate):**\n"
+        "   - ចុចប៊ូតុង '☕️ ឧបត្ថម្ភ (Donate)' ដើម្បីផ្ញើការគាំទ្រដល់ការអភិវឌ្ឍ Bot របស់យើង។"
     )
     
-    await update.message.reply_text(help_text,reply_markup=get_main_keyboard())
+    await update.message.reply_text(help_text, reply_markup=get_main_keyboard())
     
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """មុខងារសម្រាប់ចាប់យករូបភាពដែលអ្នកប្រើប្រាស់ផ្ញើមក"""
-    
-    # ពិនិត្យមើលថាតើ Bot កំពុងរង់ចាំ Logo ដែរឬទេ
     if context.user_data.get('state') == 'waiting_for_logo':
-        # ទាញយករូបភាពដែលមានគុណភាពច្បាស់ជាងគេ (index ចុងក្រោយគេ)
         photo = update.message.photo[-1]
         photo_file = await context.bot.get_file(photo.file_id)
-        
-        # ទាញយករូបភាពនោះមកទុកក្នុង Memory ជាទម្រង់ Bytes
         photo_bytes = await photo_file.download_as_bytearray()
         
-        # រក្សាទុករូបភាពនេះទៅក្នុងទិន្នន័យបណ្តោះអាសន្នរបស់អ្នកប្រើប្រាស់ម្នាក់ៗ
         context.user_data['logo_bytes'] = bytes(photo_bytes)
-        context.user_data['state'] = 'waiting_for_text_with_logo' # ប្តូរគោលដៅទៅរង់ចាំអត្ថបទវិញ
+        context.user_data['state'] = 'waiting_for_text_with_logo'
         
-        await update.message.reply_text(
-            "ទទួលបាន Logo ហើយ! ✅\n\nឥឡូវនេះ សូមបញ្ជូនអត្ថបទ ឬ Link ដែលអ្នកចង់បម្លែងជា QR Code៖",
-            reply_markup=get_main_keyboard()
-        )
+        await update.message.reply_text("ទទួលបាន Logo ហើយ! ✅\nសូមបញ្ជូនអត្ថបទ ឬ Link មកកាន់ខ្ញុំ៖", reply_markup=get_main_keyboard())
     else:
-        await update.message.reply_text("ប្រសិនបើអ្នកចង់បង្កើត QR Code ដាក់ Logo សូមចុចប៊ូតុង '🎨 QR ដាក់ Logo' ជាមុនសិន។")
+        await update.message.reply_text("ប្រសិនបើអ្នកចង់បង្កើត QR ដាក់ Logo សូមចុចប៊ូតុង '🎨 QR ដាក់ Logo' ជាមុនសិន។")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    
-    # ១. ពិនិត្យមើលការចុចប៊ូតុង
+    state = context.user_data.get('state')
+
+    # --- ចាត់ចែងការចុចប៊ូតុង (Menu) ---
     if text == "☕️ ឧបត្ថម្ភ (Donate)":
         await donate(update, context)
         return
     elif text == "❓ ជំនួយ":
         await help_command(update, context)
         return
-    elif text == "🚀 បង្កើត QR code ថ្មី":
-        context.user_data.clear() # លុបចោលប្រវត្តិទិន្នន័យចាស់
-        await update.message.reply_text("សូមវាយបញ្ចូលអត្ថបទ ឬតំណភ្ជាប់ (URL) ដែលអ្នកចង់បម្លែងជា QR Code៖")
+    elif text == "🚀 បង្កើត QR ធម្មតា":
+        context.user_data.clear()
+        await update.message.reply_text("សូមវាយបញ្ចូលអត្ថបទ ឬតំណភ្ជាប់ (URL) របស់អ្នក៖")
         return
     elif text == "🎨 QR ដាក់ Logo":
-        context.user_data['state'] = 'waiting_for_logo' # កំណត់ចំណាំថា Bot កំពុងរង់ចាំ Logo
-        await update.message.reply_text("សូមផ្ញើរូបភាព Logo ដែលអ្នកចង់ដាក់នៅកណ្តាល QR Code មកកាន់ខ្ញុំ 🖼️\n*(សូមផ្ញើជាទម្រង់រូបភាពធម្មតា មិនមែនជា File)*", parse_mode="Markdown")
+        context.user_data['state'] = 'waiting_for_logo'
+        await update.message.reply_text("សូមផ្ញើរូបភាព Logo របស់អ្នកមកកាន់ខ្ញុំ 🖼️")
+        return
+    elif text == "📶 QR សម្រាប់ Wi-Fi":
+        context.user_data['state'] = 'waiting_for_wifi_ssid'
+        await update.message.reply_text("សូមវាយបញ្ចូល **ឈ្មោះ Wi-Fi (SSID)** របស់អ្នក៖", parse_mode="Markdown")
+        return
+    elif text == "📧 QR សម្រាប់ Email":
+        context.user_data.clear()
+        await update.message.reply_text("មុខងារនេះតម្រូវឲ្យអ្នកវាយតាមទម្រង់នេះ៖\n`mailto:ឈ្មោះអ៊ីមែល@gmail.com`", parse_mode="Markdown")
         return
 
-    # ២. ដំណើរការបង្កើត QR Code (មាន Logo ឬ គ្មាន Logo)
+    # --- ចាត់ចែងការឆ្លើយតបជាជំហានៗ (Step-by-step) ---
+    
+    # ជំហានសម្រាប់ Wi-Fi
+    if state == 'waiting_for_wifi_ssid':
+        context.user_data['wifi_ssid'] = text
+        context.user_data['state'] = 'waiting_for_wifi_password'
+        await update.message.reply_text("សូមវាយបញ្ចូល **លេខសម្ងាត់ Wi-Fi (Password)** របស់អ្នក៖\n*(បើគ្មានលេខសម្ងាត់ សូមវាយពាក្យថា `គ្មាន`)*", parse_mode="Markdown")
+        return
+        
+    elif state == 'waiting_for_wifi_password':
+        ssid = context.user_data.get('wifi_ssid')
+        password = text if text.lower() != "គ្មាន" else ""
+        encryption = "WPA" if password else "nopass"
+        
+        # ផ្គុំទិន្នន័យ Wi-Fi
+        final_text = f"WIFI:T:{encryption};S:{ssid};P:{password};H:false;;"
+        caption = f"នេះជា QR Code សម្រាប់ភ្ជាប់ Wi-Fi: **{ssid}** 📶"
+        
+    else:
+        # ប្រសិនបើជាអត្ថបទធម្មតា ឬអត្ថបទសម្រាប់ដាក់ Logo
+        final_text = text
+        caption = "នេះគឺជា QR Code របស់អ្នក! 🎉"
+
+    # --- ដំណើរការបង្កើត QR Code ---
     processing_msg = await update.message.reply_text("⏳ កំពុងបង្កើត QR Code... សូមរង់ចាំបន្តិច")
     
     try:
-        # ឆែកមើលថាតើគាត់មានបានផ្ញើ Logo ទុកមុនដែរឬទេ
-        state = context.user_data.get('state')
-        logo_bytes = context.user_data.get('logo_bytes') if state == 'waiting_for_text_with_logo' else None
+        logo_bytes = context.user_data.get('logo_bytes')
         
-        # ហៅមុខងារបង្កើត QR ពី Backend របស់យើង (មាន Logo ឬ គ្មានគឺវាចាត់ចែងដោយស្វ័យប្រវត្តិ)
-        img_buffer = create_qr_code(data=text, logo_bytes=logo_bytes)
+        # ហៅមុខងារ Backend មកប្រើ (កំណត់ពណ៌តាមចំណូលចិត្តសម្រាប់ Bot)
+        img_buffer = create_qr_code(
+            data=final_text, 
+            logo_bytes=logo_bytes,
+            fg_color="#1d1b4b", # អ្នកអាចប្តូរពណ៌នៅទីនេះបាន (ឧ. ពណ៌ខៀវចាស់)
+            space=4,
+            size=768
+        )
         
         await update.message.reply_photo(
             photo=img_buffer,
-            caption="នេះគឺជា QR Code របស់អ្នក! 🎉",
+            caption=caption,
+            parse_mode="Markdown",
             reply_markup=get_main_keyboard()
         )
         await processing_msg.delete()
         
     except Exception as e:
-        print(f"Error generating QR: {e}")
-        await processing_msg.edit_text("សុំទោស! មានបញ្ហាក្នុងការបង្កើត QR Code។ សូមព្យាយាមម្តងទៀត។")
+        print(f"Error: {e}")
+        await processing_msg.edit_text("សុំទោស! មានបញ្ហាក្នុងការបង្កើត QR Code។")
     finally:
-        # សំខាន់៖ លុបទិន្នន័យ Logo ចោលវិញពេលបង្កើតរួច ដើម្បីកុំឲ្យជាប់ទៅលើកក្រោយទៀត
-        context.user_data.clear()
+        context.user_data.clear() # លុបទិន្នន័យចោលវិញ
 
 async def update_progress(update, context, processing_msg, state):
     last_percent = -1
