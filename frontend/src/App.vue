@@ -9,6 +9,7 @@ const wifiSsid = ref('')
 const wifiPassword = ref('')
 const wifiEncryption = ref('WPA')
 const wifiHidden = ref(false)
+const showPassword = ref(false)
 
 const emailAddress = ref('')
 const emailSubject = ref('')
@@ -113,7 +114,15 @@ const generateQR = async () => {
 
         <div v-if="activeTab === 'wifi'" class="section fade-in">
            <div class="form-group"><label>Network Name (SSID)</label><input type="text" v-model="wifiSsid" /></div>
-           <div class="form-group"><label>Password</label><input type="password" v-model="wifiPassword" /></div>
+           <div class="form-group">
+             <label>Password</label>
+             <div class="password-wrapper">
+               <input :type="showPassword ? 'text' : 'password'" v-model="wifiPassword" />
+               <button type="button" class="toggle-password" @click="showPassword = !showPassword">
+                 {{ showPassword ? '🙈' : '👁️' }}
+               </button>
+             </div>
+           </div>
         </div>
         <div v-if="activeTab === 'email'" class="section fade-in">
            <div class="form-group"><label>Email To</label><input type="email" v-model="emailAddress" /></div>
@@ -207,6 +216,11 @@ h3 { font-size: 16px; color: #2b3a55; margin-bottom: 15px; }
 .tab.active { background: #2b3a55; color: white; border-color: #2b3a55; }
 .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
 input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+.password-wrapper { position: relative; display: flex; align-items: center; }
+.password-wrapper input { flex: 1; padding-right: 40px; }
+.toggle-password { position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; padding: 0; outline: none; }
+
 .upload-box { display: flex; align-items: center; gap: 15px; border: 1px dashed #bbb; padding: 15px; border-radius: 8px; }
 .generate-btn { width: 100%; padding: 15px; background: #5b58c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
 .right-panel { flex: 0.8; display: flex; flex-direction: column; gap: 20px; }
