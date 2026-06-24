@@ -1,0 +1,24 @@
+# មិនបង្ហោះ Virtual Environment
+venv/
+env/
+
+# មិនបង្ហោះឯកសារសម្ងាត់
+.env
+
+# មិនបង្ហោះឯកសារបណ្ដោះអាសន្នរបស់ Python
+__pycache__/
+*.pyc
+
+# មិនបង្ហោះឯកសារ Node.js របស់ Frontend
+frontend/node_modules/
+frontend/dist/
+# # មិនបង្ហោះឯកសាររូបភាពដែលបង្កើតរួចហើយ
+# backend/images/bot/*.png
+# backend/images/*.png  
+
+
+# មិនបង្ហោះឯកសារដែលបង្កើតដោយស្វ័យប្រវត្តិ
+*.log
+*.pyc
+__pycache__/
+venv/
