@@ -90,8 +90,8 @@ const generateQR = async () => {
   <div class="app-wrapper">
     <header class="header">
       <div class="logo-area">
-        <span class="icon">🔲</span>
-        <h2>កូដQR</h2>
+        <img src="./assets/logo.png" alt="Brand Logo" width="40" height="40" class="brand-logo" />
+        <h2>QRify</h2>
       </div>
     </header>
 
@@ -207,6 +207,7 @@ const generateQR = async () => {
 .app-wrapper { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
 .header { background: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 .logo-area { display: flex; align-items: center; gap: 10px; color: #2b3a55; font-weight: bold; }
+.brand-logo { border-radius: 8px; object-fit: cover; }
 .main-container { display: flex; max-width: 1200px; margin: 30px auto; gap: 30px; padding: 0 20px; }
 .left-panel { flex: 1.2; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
 .section { margin-bottom: 25px; }
@@ -221,7 +222,7 @@ input[type="text"], input[type="password"], input[type="email"], textarea { widt
 .password-wrapper input { flex: 1; padding-right: 40px; }
 .toggle-password { position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; padding: 0; outline: none; }
 
-.upload-box { display: flex; align-items: center; gap: 15px; border: 1px dashed #bbb; padding: 15px; border-radius: 8px; }
+  .upload-box { display: flex; align-items: center; gap: 15px; border: 1px dashed #bbb; padding: 15px; border-radius: 8px; }
 .generate-btn { width: 100%; padding: 15px; background: #5b58c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
 .right-panel { flex: 0.8; display: flex; flex-direction: column; gap: 20px; }
 .preview-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
