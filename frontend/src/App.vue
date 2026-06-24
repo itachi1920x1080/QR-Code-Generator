@@ -2,42 +2,70 @@
 import { ref } from 'vue'
 import axios from 'axios'
 
-// អថេរសម្រាប់ផ្ទុកទិន្នន័យ (State Variables)
+// ១. អថេរកំណត់ Tab ដែលកំពុងបើក
+const activeTab = ref('text') // 'text', 'wifi', 'email'
+
+// ២. អថេរផ្ទុកទិន្នន័យតាមប្រភេទនីមួយៗ
+// --> សម្រាប់ Text/Link
 const textInput = ref('https://google.com')
-const fgColor = ref('#5b58c7') // ពណ៌ដើម (ពណ៌ស្វាយដូចក្នុងរូប)
-const bgColor = ref('#ffffff') // ពណ៌ផ្ទៃខាងក្រោយ
+
+// --> សម្រាប់ Wi-Fi
+const wifiSsid = ref('')
+const wifiPassword = ref('')
+const wifiEncryption = ref('WPA')
+const wifiHidden = ref(false)
+
+// --> សម្រាប់ Email
+const emailAddress = ref('')
+const emailSubject = ref('')
+const emailBody = ref('')
+
+// ៣. អថេរសម្រាប់ការកំណត់ទូទៅ (ពណ៌ និង Logo)
+const fgColor = ref('#5b58c7') 
+const bgColor = ref('#ffffff')
 const logoFile = ref(null)
 const qrImageUrl = ref(null)
 const isLoading = ref(false)
 
-// ចាប់យករូបភាព Logo ពេលអ្នកប្រើប្រាស់ Upload
+// មុខងារ Logo
 const handleLogoUpload = (event) => {
   const file = event.target.files[0]
-  if (file) {
-    logoFile.value = file
-  }
+  if (file) logoFile.value = file
 }
 
-// លុប Logo ចេញវិញ
 const removeLogo = () => {
   logoFile.value = null
-  document.getElementById('logoInput').value = '' // Reset input
+  document.getElementById('logoInput').value = ''
+}
+
+// មុខងារផ្គុំទិន្នន័យទៅជាទម្រង់ QR ស្តង់ដារ
+const getFormattedData = () => {
+  if (activeTab.value === 'text') {
+    return textInput.value
+  } else if (activeTab.value === 'wifi') {
+    const hidden = wifiHidden.value ? 'true' : 'false'
+    return `WIFI:T:${wifiEncryption.value};S:${wifiSsid.value};P:${wifiPassword.value};H:${hidden};;`
+  } else if (activeTab.value === 'email') {
+    return `mailto:${emailAddress.value}?subject=${encodeURIComponent(emailSubject.value)}&body=${encodeURIComponent(emailBody.value)}`
+  }
+  return ''
 }
 
 // មុខងារហៅ API ទៅកាន់ Backend
 const generateQR = async () => {
-  if (!textInput.value) {
-    alert("សូមបញ្ចូលអត្ថបទ ឬតំណភ្ជាប់ជាមុនសិន!")
+  const finalData = getFormattedData()
+  
+  if (!finalData) {
+    alert("សូមបំពេញព័ត៌មានឲ្យបានគ្រប់គ្រាន់ជាមុនសិន!")
     return
   }
   
   isLoading.value = true
 
   try {
-    // ដោយសារយើងមាន File យើងត្រូវប្រើ FormData ជំនួស JSON ធម្មតា
     const formData = new FormData()
-    formData.append('text', textInput.value)
-    formData.append('type', 'text')
+    formData.append('text', finalData) // បញ្ជូនទិន្នន័យដែលបានផ្គុំរួច
+    formData.append('type', activeTab.value)
     formData.append('fg_color', fgColor.value)
     formData.append('bg_color', bgColor.value)
     
@@ -45,16 +73,13 @@ const generateQR = async () => {
       formData.append('logo', logoFile.value)
     }
 
-    // បាញ់ Request ទៅកាន់ API (ប្តូរ URL នេះទៅជា Link Render របស់អ្នកពេលដាក់ឲ្យប្រើប្រាស់ពិតប្រាកដ)
+    // ប្តូរ URL ទៅជា Link API ពិតប្រាកដរបស់អ្នកនៅលើ Render
     const response = await axios.post(`https://qr-code-generator-m7bj.onrender.com/api/generate`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      responseType: 'blob' // ចង់បានទិន្នន័យជារូបភាព
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob'
     })
     
-    // បង្កើត URL ពីរូបភាពដែលទទួលបាន
-    if (qrImageUrl.value) URL.revokeObjectURL(qrImageUrl.value) // លុប Memory ចាស់
+    if (qrImageUrl.value) URL.revokeObjectURL(qrImageUrl.value)
     qrImageUrl.value = URL.createObjectURL(response.data)
     
   } catch (error) {
@@ -81,31 +106,66 @@ const generateQR = async () => {
         <div class="section">
           <h3>Choose Type</h3>
           <div class="tabs">
-            <button class="tab active">📝 Text / Link</button>
-            <button class="tab disabled">📶 Wi-Fi</button>
-            <button class="tab disabled">📧 Email</button>
+            <button class="tab" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'">📝 Text / Link</button>
+            <button class="tab" :class="{ active: activeTab === 'wifi' }" @click="activeTab = 'wifi'">📶 Wi-Fi</button>
+            <button class="tab" :class="{ active: activeTab === 'email' }" @click="activeTab = 'email'">📧 Email</button>
           </div>
         </div>
 
-        <div class="section">
+        <div v-if="activeTab === 'text'" class="section fade-in">
           <h3>Content</h3>
-          <textarea 
-            v-model="textInput" 
-            rows="4" 
-            placeholder="បញ្ចូលអត្ថបទ ឬ URL នៅទីនេះ..."
-          ></textarea>
+          <textarea v-model="textInput" rows="4" placeholder="បញ្ចូលអត្ថបទ ឬ URL នៅទីនេះ..."></textarea>
+        </div>
+
+        <div v-if="activeTab === 'wifi'" class="section fade-in">
+          <h3>Wi-Fi Details</h3>
+          <div class="form-group">
+            <label>Network Name (SSID)</label>
+            <input type="text" v-model="wifiSsid" placeholder="ឧ. MyHomeWiFi" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" v-model="wifiPassword" placeholder="បញ្ចូលលេខសម្ងាត់" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Encryption</label>
+              <select v-model="wifiEncryption">
+                <option value="WPA">WPA/WPA2</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass">គ្មានលេខសម្ងាត់ (None)</option>
+              </select>
+            </div>
+            <div class="form-group checkbox-group">
+              <label>
+                <input type="checkbox" v-model="wifiHidden" /> 
+                Hidden Network
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="activeTab === 'email'" class="section fade-in">
+          <h3>Email Details</h3>
+          <div class="form-group">
+            <label>Email To</label>
+            <input type="email" v-model="emailAddress" placeholder="ឧ. hello@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Subject</label>
+            <input type="text" v-model="emailSubject" placeholder="ប្រធានបទ..." />
+          </div>
+          <div class="form-group">
+            <label>Message Body</label>
+            <textarea v-model="emailBody" rows="3" placeholder="សរសេរសាររបស់អ្នកនៅទីនេះ..."></textarea>
+          </div>
         </div>
 
         <div class="section">
           <h3>Set Logo</h3>
           <p class="subtitle">Logo នឹងត្រូវដាក់នៅចំកណ្តាល QR Code</p>
           <div class="upload-box">
-            <input 
-              type="file" 
-              id="logoInput"
-              accept="image/png, image/jpeg" 
-              @change="handleLogoUpload"
-            />
+            <input type="file" id="logoInput" accept="image/png, image/jpeg" @change="handleLogoUpload" />
             <span v-if="logoFile" class="file-name">
               {{ logoFile.name }}
               <button @click.prevent="removeLogo" class="remove-btn">❌</button>
@@ -122,11 +182,8 @@ const generateQR = async () => {
         <div class="preview-card">
           <div class="preview-header">
             <h3>👁️ Show Result</h3>
-            <a v-if="qrImageUrl" :href="qrImageUrl" download="my_qrcode.png" class="download-btn">
-              ⬇️ Download
-            </a>
+            <a v-if="qrImageUrl" :href="qrImageUrl" download="my_qrcode.png" class="download-btn">⬇️ Download</a>
           </div>
-          
           <div class="qr-display">
             <img v-if="qrImageUrl" :src="qrImageUrl" alt="QR Code" class="qr-image" />
             <div v-else class="placeholder">
@@ -155,11 +212,9 @@ const generateQR = async () => {
 </template>
 
 <style scoped>
-/* រចនាប័ទ្មទូទៅ */
+/* រចនាប័ទ្មទូទៅ (រក្សាទុកភាគច្រើនដូចចាស់) */
 .app-wrapper {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6fa;
-  min-height: 100vh;
   color: #333;
 }
 
@@ -174,6 +229,7 @@ const generateQR = async () => {
   align-items: center;
   gap: 10px;
   color: #2b3a55;
+  font-weight: bold;
 }
 
 .main-container {
@@ -184,7 +240,6 @@ const generateQR = async () => {
   padding: 0 20px;
 }
 
-/* ផ្នែកខាងឆ្វេង */
 .left-panel {
   flex: 1.2;
   background: white;
@@ -213,6 +268,7 @@ h3 {
 .tabs {
   display: flex;
   gap: 10px;
+  margin-bottom: 20px;
 }
 
 .tab {
@@ -222,6 +278,7 @@ h3 {
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+  transition: 0.2s;
 }
 
 .tab.active {
@@ -230,21 +287,55 @@ h3 {
   border-color: #2b3a55;
 }
 
-.tab.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* CSS ថ្មីសម្រាប់ទម្រង់បញ្ចូលទិន្នន័យ (Forms) */
+.form-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-textarea {
+.form-group label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.checkbox-group {
+  flex-direction: row;
+  align-items: center;
+  margin-top: 25px;
+}
+
+input[type="text"], input[type="password"], input[type="email"], select, textarea {
   width: 100%;
-  padding: 15px;
+  padding: 12px;
   border: 1px solid #ddd;
   border-radius: 8px;
-  resize: vertical;
   font-size: 14px;
   box-sizing: border-box;
+  font-family: inherit;
 }
 
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ផ្នែកផ្សេងៗទៀតរក្សាដូចចាស់ */
 .upload-box {
   display: flex;
   align-items: center;
@@ -280,15 +371,9 @@ textarea {
   transition: 0.3s;
 }
 
-.generate-btn:hover {
-  background: #4a47a3;
-}
+.generate-btn:hover { background: #4a47a3; }
+.generate-btn:disabled { background: #ccc; }
 
-.generate-btn:disabled {
-  background: #ccc;
-}
-
-/* ផ្នែកខាងស្តាំ */
 .right-panel {
   flex: 0.8;
   display: flex;
@@ -320,10 +405,6 @@ textarea {
   font-size: 14px;
 }
 
-.download-btn:hover {
-  background: #f4f6fa;
-}
-
 .qr-display {
   display: flex;
   justify-content: center;
@@ -336,38 +417,13 @@ textarea {
 
 .qr-image {
   max-width: 100%;
-  height: auto;
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-.placeholder p {
-  color: #888;
-}
+.color-row { display: flex; gap: 30px; }
+.color-picker-group { display: flex; flex-direction: column; gap: 10px; }
+input[type="color"] { width: 100px; height: 40px; border: none; border-radius: 5px; cursor: pointer; }
 
-.color-row {
-  display: flex;
-  gap: 30px;
-}
-
-.color-picker-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-input[type="color"] {
-  width: 100px;
-  height: 40px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-/* សម្រាប់អេក្រង់ទូរស័ព្ទ */
-@media (max-width: 768px) {
-  .main-container {
-    flex-direction: column;
-  }
-}
+@media (max-width: 768px) { .main-container { flex-direction: column; } }
 </style>
