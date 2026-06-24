@@ -19,7 +19,7 @@ const generateQR = async () => {
 
   try {
     // បាញ់ Request ទៅកាន់ FastAPI Backend
-    const response = await axios.get(`http://127.0.0.1:8000/api/generate`, {
+    const response = await axios.get(`https://qr-code-generator-m7bj.onrender.com/api/generate`, {
       params: { text: textInput.value },
       responseType: 'blob' // សំខាន់៖ ប្រាប់ axios ថាយើងចង់បានទិន្នន័យជារូបភាព (File/Blob) មិនមែនជាអត្ថបទទេ
     })
