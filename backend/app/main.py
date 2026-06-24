@@ -22,26 +22,28 @@ def read_root():
 # ១. ប្តូរពី @app.get ទៅជា @app.post ដើម្បីអាចទទួល File ពី Frontend បាន
 @app.post("/api/generate")
 async def generate_qr_api(
-    # ២. ប្រើប្រាស់ Form(...) ជំនួស Query(...)
-    text: str = Form(..., description="អត្ថបទ ឬ Link ដែលចង់បំប្លែងជា QR Code"),
+    text: str = Form(...),
     type: str = Form("text"),
-    fg_color: str = Form("black", description="ពណ៌ផ្ទៃខាងមុខ"),
-    bg_color: str = Form("white", description="ពណ៌ផ្ទៃខាងក្រោយ"),
-    logo: Optional[UploadFile] = File(None, description="រូបភាព Logo នៅកណ្តាល")
+    fg_color: str = Form("#000000"),
+    bg_color: str = Form("#ffffff"),
+    space: int = Form(4),    # ទទួលយកតម្លៃ Space (គែម)
+    size: int = Form(768),   # ទទួលយកតម្លៃទំហំ (Size)
+    logo: Optional[UploadFile] = File(None)
 ):
     try:
         if not text:
             return {"error": "Text or Link cannot be empty"}
         
-        # ៣. អានទិន្នន័យរូបភាព (ប្រសិនបើអ្នកប្រើប្រាស់មាន Upload Logo)
         logo_bytes = await logo.read() if logo else None
         
-        # ៤. បញ្ជូនទិន្នន័យទាំងអស់ទៅកាន់មុខងារបង្កើត QR
+        # បញ្ជូនទិន្នន័យថ្មីទៅកាន់មុខងារ
         buffer = create_qr_code(
             data=text, 
             fg_color=fg_color, 
             bg_color=bg_color, 
-            logo_bytes=logo_bytes
+            logo_bytes=logo_bytes,
+            space=space,
+            size=size
         )
         return StreamingResponse(buffer, media_type="image/png")
         

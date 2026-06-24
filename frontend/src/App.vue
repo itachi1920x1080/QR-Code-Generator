@@ -2,32 +2,35 @@
 import { ref } from 'vue'
 import axios from 'axios'
 
-// ១. អថេរកំណត់ Tab ដែលកំពុងបើក
-const activeTab = ref('text') // 'text', 'wifi', 'email'
-
-// ២. អថេរផ្ទុកទិន្នន័យតាមប្រភេទនីមួយៗ
-// --> សម្រាប់ Text/Link
+const activeTab = ref('text') 
 const textInput = ref('https://google.com')
 
-// --> សម្រាប់ Wi-Fi
 const wifiSsid = ref('')
 const wifiPassword = ref('')
 const wifiEncryption = ref('WPA')
 const wifiHidden = ref(false)
 
-// --> សម្រាប់ Email
 const emailAddress = ref('')
 const emailSubject = ref('')
 const emailBody = ref('')
 
-// ៣. អថេរសម្រាប់ការកំណត់ទូទៅ (ពណ៌ និង Logo)
-const fgColor = ref('#5b58c7') 
+// អថេរថ្មីសម្រាប់ UI កម្រិតខ្ពស់
+const fgColor = ref('#6e69cc') 
 const bgColor = ref('#ffffff')
+const spaceValue = ref(50) // Space ពី 0 ដល់ 100
+const imageSize = ref(768) // ទំហំរូបភាពលំនាំដើម
+
 const logoFile = ref(null)
 const qrImageUrl = ref(null)
 const isLoading = ref(false)
 
-// មុខងារ Logo
+// មុខងារប្តូរពណ៌ចុះឡើង (Swap Colors)
+const swapColors = () => {
+  const temp = fgColor.value
+  fgColor.value = bgColor.value
+  bgColor.value = temp
+}
+
 const handleLogoUpload = (event) => {
   const file = event.target.files[0]
   if (file) logoFile.value = file
@@ -38,42 +41,33 @@ const removeLogo = () => {
   document.getElementById('logoInput').value = ''
 }
 
-// មុខងារផ្គុំទិន្នន័យទៅជាទម្រង់ QR ស្តង់ដារ
 const getFormattedData = () => {
-  if (activeTab.value === 'text') {
-    return textInput.value
-  } else if (activeTab.value === 'wifi') {
-    const hidden = wifiHidden.value ? 'true' : 'false'
-    return `WIFI:T:${wifiEncryption.value};S:${wifiSsid.value};P:${wifiPassword.value};H:${hidden};;`
-  } else if (activeTab.value === 'email') {
-    return `mailto:${emailAddress.value}?subject=${encodeURIComponent(emailSubject.value)}&body=${encodeURIComponent(emailBody.value)}`
-  }
+  if (activeTab.value === 'text') return textInput.value
+  if (activeTab.value === 'wifi') return `WIFI:T:${wifiEncryption.value};S:${wifiSsid.value};P:${wifiPassword.value};H:${wifiHidden.value ? 'true' : 'false'};;`
+  if (activeTab.value === 'email') return `mailto:${emailAddress.value}?subject=${encodeURIComponent(emailSubject.value)}&body=${encodeURIComponent(emailBody.value)}`
   return ''
 }
 
-// មុខងារហៅ API ទៅកាន់ Backend
 const generateQR = async () => {
   const finalData = getFormattedData()
-  
-  if (!finalData) {
-    alert("សូមបំពេញព័ត៌មានឲ្យបានគ្រប់គ្រាន់ជាមុនសិន!")
-    return
-  }
+  if (!finalData) { alert("សូមបំពេញព័ត៌មានឲ្យបានគ្រប់គ្រាន់!"); return }
   
   isLoading.value = true
 
   try {
     const formData = new FormData()
-    formData.append('text', finalData) // បញ្ជូនទិន្នន័យដែលបានផ្គុំរួច
+    formData.append('text', finalData)
     formData.append('type', activeTab.value)
     formData.append('fg_color', fgColor.value)
     formData.append('bg_color', bgColor.value)
     
-    if (logoFile.value) {
-      formData.append('logo', logoFile.value)
-    }
+    // បម្លែង % របស់ Space ទៅជាទំហំគែម (Border) របស់ QR ពី 0 ទៅ 10
+    const borderValue = Math.floor((spaceValue.value / 100) * 10)
+    formData.append('space', borderValue)
+    formData.append('size', imageSize.value)
+    
+    if (logoFile.value) formData.append('logo', logoFile.value)
 
-    // ប្តូរ URL ទៅជា Link API ពិតប្រាកដរបស់អ្នកនៅលើ Render
     const response = await axios.post(`https://qr-code-generator-m7bj.onrender.com/api/generate`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       responseType: 'blob'
@@ -84,7 +78,7 @@ const generateQR = async () => {
     
   } catch (error) {
     console.error("មានបញ្ហា:", error)
-    alert("មិនអាចបង្កើត QR Code បានទេ។ សូមពិនិត្យមើល Backend របស់អ្នក។")
+    alert("មិនអាចបង្កើត QR Code បានទេ។")
   } finally {
     isLoading.value = false
   }
@@ -118,58 +112,18 @@ const generateQR = async () => {
         </div>
 
         <div v-if="activeTab === 'wifi'" class="section fade-in">
-          <h3>Wi-Fi Details</h3>
-          <div class="form-group">
-            <label>Network Name (SSID)</label>
-            <input type="text" v-model="wifiSsid" placeholder="ឧ. MyHomeWiFi" />
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" v-model="wifiPassword" placeholder="បញ្ចូលលេខសម្ងាត់" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Encryption</label>
-              <select v-model="wifiEncryption">
-                <option value="WPA">WPA/WPA2</option>
-                <option value="WEP">WEP</option>
-                <option value="nopass">គ្មានលេខសម្ងាត់ (None)</option>
-              </select>
-            </div>
-            <div class="form-group checkbox-group">
-              <label>
-                <input type="checkbox" v-model="wifiHidden" /> 
-                Hidden Network
-              </label>
-            </div>
-          </div>
+           <div class="form-group"><label>Network Name (SSID)</label><input type="text" v-model="wifiSsid" /></div>
+           <div class="form-group"><label>Password</label><input type="password" v-model="wifiPassword" /></div>
         </div>
-
         <div v-if="activeTab === 'email'" class="section fade-in">
-          <h3>Email Details</h3>
-          <div class="form-group">
-            <label>Email To</label>
-            <input type="email" v-model="emailAddress" placeholder="ឧ. hello@example.com" />
-          </div>
-          <div class="form-group">
-            <label>Subject</label>
-            <input type="text" v-model="emailSubject" placeholder="ប្រធានបទ..." />
-          </div>
-          <div class="form-group">
-            <label>Message Body</label>
-            <textarea v-model="emailBody" rows="3" placeholder="សរសេរសាររបស់អ្នកនៅទីនេះ..."></textarea>
-          </div>
+           <div class="form-group"><label>Email To</label><input type="email" v-model="emailAddress" /></div>
         </div>
 
         <div class="section">
           <h3>Set Logo</h3>
-          <p class="subtitle">Logo នឹងត្រូវដាក់នៅចំកណ្តាល QR Code</p>
           <div class="upload-box">
             <input type="file" id="logoInput" accept="image/png, image/jpeg" @change="handleLogoUpload" />
-            <span v-if="logoFile" class="file-name">
-              {{ logoFile.name }}
-              <button @click.prevent="removeLogo" class="remove-btn">❌</button>
-            </span>
+            <span v-if="logoFile" class="file-name">{{ logoFile.name }} <button @click.prevent="removeLogo" class="remove-btn">❌</button></span>
           </div>
         </div>
         
@@ -186,24 +140,52 @@ const generateQR = async () => {
           </div>
           <div class="qr-display">
             <img v-if="qrImageUrl" :src="qrImageUrl" alt="QR Code" class="qr-image" />
-            <div v-else class="placeholder">
-              <p>សូមចុចប៊ូតុង "បង្កើត" ដើម្បីមើលលទ្ធផល</p>
-            </div>
+            <div v-else class="placeholder"><p>សូមចុចប៊ូតុង "បង្កើត" ដើម្បីមើលលទ្ធផល</p></div>
           </div>
         </div>
 
-        <div class="color-settings-card">
-          <h3>🎨 Color Settings</h3>
-          <div class="color-row">
-            <div class="color-picker-group">
-              <label>Foreground</label>
-              <input type="color" v-model="fgColor" />
+        <div class="advanced-settings-card">
+          
+          <div class="setting-group">
+            <div class="setting-header">
+              <h3>🎨 Color</h3>
+              <div class="color-swatch-area">
+                <button class="swap-btn" @click="swapColors">⇄</button>
+                <div class="color-preview" :style="{ backgroundColor: fgColor }"></div>
+                <div class="color-preview bordered" :style="{ backgroundColor: bgColor }"></div>
+              </div>
             </div>
-            <div class="color-picker-group">
-              <label>Background</label>
-              <input type="color" v-model="bgColor" />
+            <div class="color-inputs">
+              <div class="hex-input-box">
+                <input type="color" v-model="fgColor" class="hidden-color-picker">
+                <input type="text" v-model="fgColor" class="hex-text">
+              </div>
+              <div class="hex-input-box">
+                <input type="color" v-model="bgColor" class="hidden-color-picker">
+                <input type="text" v-model="bgColor" class="hex-text">
+              </div>
             </div>
           </div>
+
+          <div class="setting-group border-top">
+            <h3>🔲 Space</h3>
+            <input type="range" min="0" max="100" v-model="spaceValue" class="custom-slider">
+            <div class="slider-labels">
+              <span>0%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <div class="setting-group border-top size-section">
+            <h3 class="inline-h3">🖼️ Image Size</h3>
+            <select v-model="imageSize" class="size-dropdown">
+              <option value="512">512×512</option>
+              <option value="768">768×768</option>
+              <option value="1024">1024×1024</option>
+              <option value="2048">2048×2048</option>
+            </select>
+          </div>
+
         </div>
       </div>
 
@@ -212,218 +194,99 @@ const generateQR = async () => {
 </template>
 
 <style scoped>
-/* រចនាប័ទ្មទូទៅ (រក្សាទុកភាគច្រើនដូចចាស់) */
-.app-wrapper {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #333;
-}
+/* រចនាប័ទ្មចាស់ៗរក្សាដដែល */
+.app-wrapper { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
+.header { background: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.logo-area { display: flex; align-items: center; gap: 10px; color: #2b3a55; font-weight: bold; }
+.main-container { display: flex; max-width: 1200px; margin: 30px auto; gap: 30px; padding: 0 20px; }
+.left-panel { flex: 1.2; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+.section { margin-bottom: 25px; }
+h3 { font-size: 16px; color: #2b3a55; margin-bottom: 15px; }
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.tab { padding: 10px 20px; border: 1px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+.tab.active { background: #2b3a55; color: white; border-color: #2b3a55; }
+.form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
+input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+.upload-box { display: flex; align-items: center; gap: 15px; border: 1px dashed #bbb; padding: 15px; border-radius: 8px; }
+.generate-btn { width: 100%; padding: 15px; background: #5b58c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+.right-panel { flex: 0.8; display: flex; flex-direction: column; gap: 20px; }
+.preview-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.download-btn { padding: 8px 15px; border: 1px solid #ddd; border-radius: 6px; text-decoration: none; color: #333; }
+.qr-display { display: flex; justify-content: center; align-items: center; background: #f4f6fa; border-radius: 8px; min-height: 300px; padding: 20px; }
+.qr-image { max-width: 100%; border-radius: 8px; }
 
-.header {
+/* CSS ថ្មីសម្រាប់ UI របស់ Settings (Color, Space, Size) */
+.advanced-settings-card {
   background: white;
-  padding: 15px 30px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.logo-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #2b3a55;
-  font-weight: bold;
-}
-
-.main-container {
-  display: flex;
-  max-width: 1200px;
-  margin: 30px auto;
-  gap: 30px;
-  padding: 0 20px;
-}
-
-.left-panel {
-  flex: 1.2;
-  background: white;
-  padding: 30px;
+  padding: 20px 25px;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.03);
 }
 
-.section {
-  margin-bottom: 25px;
-}
+.setting-group { padding: 15px 0; }
+.border-top { border-top: 1px solid #f0f0f0; }
 
-h3 {
-  font-size: 16px;
-  color: #2b3a55;
-  margin-bottom: 15px;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: #777;
-  margin-top: -10px;
-  margin-bottom: 10px;
-}
-
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.tab {
-  padding: 10px 20px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: 0.2s;
-}
-
-.tab.active {
-  background: #2b3a55;
-  color: white;
-  border-color: #2b3a55;
-}
-
-/* CSS ថ្មីសម្រាប់ទម្រង់បញ្ចូលទិន្នន័យ (Forms) */
-.form-group {
-  margin-bottom: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: bold;
-  color: #555;
-}
-
-.form-row {
-  display: flex;
-  gap: 20px;
-}
-
-.form-row .form-group {
-  flex: 1;
-}
-
-.checkbox-group {
-  flex-direction: row;
-  align-items: center;
-  margin-top: 25px;
-}
-
-input[type="text"], input[type="password"], input[type="email"], select, textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ផ្នែកផ្សេងៗទៀតរក្សាដូចចាស់ */
-.upload-box {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  border: 1px dashed #bbb;
-  padding: 15px;
-  border-radius: 8px;
-}
-
-.file-name {
-  font-size: 14px;
-  color: #4CAF50;
-  font-weight: bold;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.generate-btn {
-  width: 100%;
-  padding: 15px;
-  background: #5b58c7;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.generate-btn:hover { background: #4a47a3; }
-.generate-btn:disabled { background: #ccc; }
-
-.right-panel {
-  flex: 0.8;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.preview-card, .color-settings-card {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-}
-
-.preview-header {
+.setting-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
-.download-btn {
-  padding: 8px 15px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  text-decoration: none;
-  color: #333;
-  font-size: 14px;
-}
-
-.qr-display {
+.color-swatch-area {
   display: flex;
-  justify-content: center;
   align-items: center;
-  background: #f4f6fa;
-  border-radius: 8px;
-  min-height: 300px;
-  padding: 20px;
+  gap: 10px;
 }
 
-.qr-image {
-  max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+.swap-btn {
+  background: none; border: none; cursor: pointer; font-size: 18px; color: #666;
 }
 
-.color-row { display: flex; gap: 30px; }
-.color-picker-group { display: flex; flex-direction: column; gap: 10px; }
-input[type="color"] { width: 100px; height: 40px; border: none; border-radius: 5px; cursor: pointer; }
+.color-preview {
+  width: 24px; height: 24px; border-radius: 4px;
+}
+.bordered { border: 1px solid #ddd; }
+
+.color-inputs {
+  display: flex; gap: 15px;
+}
+
+.hex-input-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 5px 10px;
+  position: relative;
+}
+
+.hidden-color-picker {
+  opacity: 0; position: absolute; width: 100%; height: 100%; cursor: pointer;
+}
+
+.hex-text {
+  border: none !important; padding: 5px !important; color: #555; font-weight: 500; font-family: monospace; pointer-events: none;
+}
+
+/* តុបតែង Slider (Space) */
+.custom-slider {
+  width: 100%; margin-top: 10px; cursor: pointer;
+}
+.slider-labels {
+  display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-top: 5px; font-weight: bold;
+}
+
+/* តុបតែង Image Size */
+.size-section {
+  display: flex; align-items: center; gap: 20px;
+}
+.inline-h3 { margin: 0; }
+.size-dropdown {
+  background: #f0f2f5; border: none; padding: 8px 15px; border-radius: 20px; font-weight: bold; color: #333; outline: none; cursor: pointer;
+}
 
 @media (max-width: 768px) { .main-container { flex-direction: column; } }
 </style>
