@@ -16,9 +16,9 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 DONATE_QR_ID =  os.getenv("DONATE_QR_FILE_ID")
 
 
-def get_main_keyboard ():
+def get_main_keyboard():
     keyboard = [
-        [KeyboardButton("🚀 បង្កើត QR code ថ្មី")],
+        [KeyboardButton("🚀 បង្កើត QR code ថ្មី"), KeyboardButton("🎨 QR ដាក់ Logo")],
         [KeyboardButton("☕️ ឧបត្ថម្ភ (Donate)"), KeyboardButton("❓ ជំនួយ")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -68,10 +68,33 @@ async def help_command(update :Update,context :ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(help_text,reply_markup=get_main_keyboard())
     
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """មុខងារសម្រាប់ចាប់យករូបភាពដែលអ្នកប្រើប្រាស់ផ្ញើមក"""
+    
+    # ពិនិត្យមើលថាតើ Bot កំពុងរង់ចាំ Logo ដែរឬទេ
+    if context.user_data.get('state') == 'waiting_for_logo':
+        # ទាញយករូបភាពដែលមានគុណភាពច្បាស់ជាងគេ (index ចុងក្រោយគេ)
+        photo = update.message.photo[-1]
+        photo_file = await context.bot.get_file(photo.file_id)
+        
+        # ទាញយករូបភាពនោះមកទុកក្នុង Memory ជាទម្រង់ Bytes
+        photo_bytes = await photo_file.download_as_bytearray()
+        
+        # រក្សាទុករូបភាពនេះទៅក្នុងទិន្នន័យបណ្តោះអាសន្នរបស់អ្នកប្រើប្រាស់ម្នាក់ៗ
+        context.user_data['logo_bytes'] = bytes(photo_bytes)
+        context.user_data['state'] = 'waiting_for_text_with_logo' # ប្តូរគោលដៅទៅរង់ចាំអត្ថបទវិញ
+        
+        await update.message.reply_text(
+            "ទទួលបាន Logo ហើយ! ✅\n\nឥឡូវនេះ សូមបញ្ជូនអត្ថបទ ឬ Link ដែលអ្នកចង់បម្លែងជា QR Code៖",
+            reply_markup=get_main_keyboard()
+        )
+    else:
+        await update.message.reply_text("ប្រសិនបើអ្នកចង់បង្កើត QR Code ដាក់ Logo សូមចុចប៊ូតុង '🎨 QR ដាក់ Logo' ជាមុនសិន។")
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     
-    # ពិនិត្យមើលប៊ូតុង
+    # ១. ពិនិត្យមើលការចុចប៊ូតុង
     if text == "☕️ ឧបត្ថម្ភ (Donate)":
         await donate(update, context)
         return
@@ -79,51 +102,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await help_command(update, context)
         return
     elif text == "🚀 បង្កើត QR code ថ្មី":
-        await update.message.reply_text(
-            "សូមវាយបញ្ចូលអត្ថបទ ឬតំណភ្ជាប់ (URL) ដែលអ្នកចង់បម្លែងជា QR Code៖",
-            reply_markup=get_main_keyboard()
-        )
+        context.user_data.clear() # លុបចោលប្រវត្តិទិន្នន័យចាស់
+        await update.message.reply_text("សូមវាយបញ្ចូលអត្ថបទ ឬតំណភ្ជាប់ (URL) ដែលអ្នកចង់បម្លែងជា QR Code៖")
+        return
+    elif text == "🎨 QR ដាក់ Logo":
+        context.user_data['state'] = 'waiting_for_logo' # កំណត់ចំណាំថា Bot កំពុងរង់ចាំ Logo
+        await update.message.reply_text("សូមផ្ញើរូបភាព Logo ដែលអ្នកចង់ដាក់នៅកណ្តាល QR Code មកកាន់ខ្ញុំ 🖼️\n*(សូមផ្ញើជាទម្រង់រូបភាពធម្មតា មិនមែនជា File)*", parse_mode="Markdown")
         return
 
-    # ១. ផ្ញើសារដំបូង
-    processing_msg = await update.message.reply_text("⏳ កំពុងរៀបចំ...")
-
+    # ២. ដំណើរការបង្កើត QR Code (មាន Logo ឬ គ្មាន Logo)
+    processing_msg = await update.message.reply_text("⏳ កំពុងបង្កើត QR Code... សូមរង់ចាំបន្តិច")
+    
     try:
-        # ២. ធ្វើចលនាលោតភាគរយ (Progress Bar Animation)
-        # យើងឲ្យវាលោតពី 20, 50, 80, រហូតដល់ 100
-        for percent in [20, 50, 80, 100]:
-            bars = "█" * (percent // 10)
-            empty = "░" * (10 - (percent // 10))
-            progress_text = f"⏳ កំពុងបង្កើត QR Code ({percent}%)\n{bars}{empty}"
-            
-            # កែប្រែសារចាស់ឲ្យទៅជាភាគរយថ្មី
-            await context.bot.edit_message_text(
-                chat_id=update.message.chat_id,
-                message_id=processing_msg.message_id,
-                text=progress_text
-            )
-            await asyncio.sleep(0.4) # សម្រាក 0.4 វិនាទី ទើបលោតភាគរយបន្តទៀត
-            
-        # ៣. ហៅមុខងារបង្កើត QR Code ពិតប្រាកដ
-        img_buffer = create_qr_code(text)
+        # ឆែកមើលថាតើគាត់មានបានផ្ញើ Logo ទុកមុនដែរឬទេ
+        state = context.user_data.get('state')
+        logo_bytes = context.user_data.get('logo_bytes') if state == 'waiting_for_text_with_logo' else None
         
-        # ៤. ផ្ញើរូបភាពទៅកាន់អ្នកប្រើប្រាស់
+        # ហៅមុខងារបង្កើត QR ពី Backend របស់យើង (មាន Logo ឬ គ្មានគឺវាចាត់ចែងដោយស្វ័យប្រវត្តិ)
+        img_buffer = create_qr_code(data=text, logo_bytes=logo_bytes)
+        
         await update.message.reply_photo(
             photo=img_buffer,
-            caption="នេះគឺជា QR Code របស់អ្នក! 🚀\n\nបង្កើតដោយ: @ឈ្មោះBotរបស់អ្នក",
+            caption="នេះគឺជា QR Code របស់អ្នក! 🎉",
             reply_markup=get_main_keyboard()
         )
-        
-        # ៥. លុបសារ Progress bar (100%) នោះចោលវិញ ដើម្បីកុំឲ្យរញ៉េរញ៉ៃ
         await processing_msg.delete()
         
     except Exception as e:
         print(f"Error generating QR: {e}")
-        await context.bot.edit_message_text(
-            chat_id=update.message.chat_id,
-            message_id=processing_msg.message_id,
-            text="សុំទោស! មានបញ្ហាក្នុងការបង្កើត QR Code។ សូមព្យាយាមម្តងទៀត។"
-        )
+        await processing_msg.edit_text("សុំទោស! មានបញ្ហាក្នុងការបង្កើត QR Code។ សូមព្យាយាមម្តងទៀត។")
+    finally:
+        # សំខាន់៖ លុបទិន្នន័យ Logo ចោលវិញពេលបង្កើតរួច ដើម្បីកុំឲ្យជាប់ទៅលើកក្រោយទៀត
+        context.user_data.clear()
 
 async def update_progress(update, context, processing_msg, state):
     last_percent = -1
@@ -166,6 +176,9 @@ def main():
     
     # ភ្ជាប់មុខងារអានសារធម្មតា (មិនមែនជា Command /)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # ភ្ជាប់មុខងារអានសារជារូបភាព (បន្ថែមថ្មី)
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
     print("🚀 Telegram Bot កំពុងដំណើរការហើយ... (ចុច Ctrl+C ដើម្បីបញ្ឈប់)")
     
