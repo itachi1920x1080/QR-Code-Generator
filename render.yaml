@@ -1,0 +1,11 @@
+services:
+  - type: worker
+    name: telegram-qr-bot
+    env: python
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "python backend/bot/telegram_bot.py"
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: DONATE_QR_FILE_ID
+        sync: false
